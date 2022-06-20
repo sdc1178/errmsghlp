@@ -1,0 +1,190 @@
+package com.kroger.pos.commonviews
+
+import android.content.res.Configuration
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.Icon
+import androidx.compose.material.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.res.colorResource
+import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import com.kroger.design.R
+import com.kroger.design.components.ValidationMessageState
+import com.kroger.design.compose.DARK_MODE_PREVIEW_BACKGROUND
+import com.kroger.design.compose.LIGHT_MODE_PREVIEW_BACKGROUND
+import com.kroger.design.compose.theme.KdsColors
+import com.kroger.design.compose.theme.KdsTheme
+import com.kroger.design.util.KdsMessagePosition
+
+val ValidationMessageState.icon
+    @Composable get() = painterResource(
+        when (this) {
+            ValidationMessageState.INFO -> R.drawable.kds_icons_info
+            ValidationMessageState.SUCCESS -> R.drawable.kds_icons_success
+            ValidationMessageState.ERROR -> R.drawable.kds_icons_error
+            ValidationMessageState.ALERT -> R.drawable.kds_icons_warning
+        }
+    )
+
+val ValidationMessageState.backgroundColor
+    @Composable get() = when (this) {
+        ValidationMessageState.INFO -> KdsTheme.colors.informativeMoreSubtle
+        ValidationMessageState.SUCCESS -> KdsTheme.colors.positiveMoreSubtle
+        ValidationMessageState.ERROR -> KdsTheme.colors.negativeMoreSubtle
+        ValidationMessageState.ALERT -> KdsTheme.colors.calloutMoreSubtle
+    }
+
+val ValidationMessageState.textColor
+    @Composable get() = when (this) {
+        ValidationMessageState.INFO -> KdsTheme.colors.informativeLessProminent
+        ValidationMessageState.SUCCESS -> KdsTheme.colors.positiveLessProminent
+        ValidationMessageState.ERROR -> KdsTheme.colors.negativeLessProminent
+        ValidationMessageState.ALERT -> KdsTheme.colors.calloutLessProminent
+    }
+
+val KdsColors.colorOverlay
+    @Composable get() = if (isDark) {
+        colorResource(R.color.kds_surface_color_dark_overlay_80)
+    } else {
+        colorResource(R.color.kds_internal_transparent)
+    }
+
+val KdsMessagePosition.shape @Composable get() = when (this) {
+    KdsMessagePosition.DEFAULT -> RoundedCornerShape(4.dp)
+    KdsMessagePosition.TOP -> RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)
+    KdsMessagePosition.BODY -> RectangleShape
+    KdsMessagePosition.BOTTOM -> RoundedCornerShape(bottomStart = 4.dp, bottomEnd = 4.dp)
+}
+
+/**
+ * Displays a KDS Inline Message styled to communicate with users through UI
+ */
+@Composable
+fun KdsInlineMessage(
+    label: String,
+    modifier: Modifier = Modifier,
+    linkDisplay: String? = null,
+    onLinkClicked: () -> Unit = {},
+    style: ValidationMessageState = ValidationMessageState.INFO,
+    dismissible: Boolean = false,
+    position: KdsMessagePosition = KdsMessagePosition.DEFAULT,
+    onDismissClicked: () -> Unit = {},
+) {
+    val iconSize = dimensionResource(id = R.dimen.kds_size_image_icon_utility_small)
+    Row(
+        modifier = modifier
+            .border(
+                width = 1.dp,
+                color = style.textColor,
+                shape = position.shape,
+            )
+            .background(
+                color = style.backgroundColor,
+                shape = position.shape,
+            )
+            .background(
+                color = KdsTheme.colors.colorOverlay,
+                shape = position.shape,
+            )
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+    ) {
+        Icon(
+            painter = style.icon,
+            contentDescription = null,
+            modifier = Modifier.size(iconSize)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(
+                text = label,
+                style = KdsTheme.typography.bodySmall,
+            )
+            if (linkDisplay != null) {
+                Text(
+                    text = linkDisplay,
+                    style = KdsTheme.typography.bodySmall,
+                    textDecoration = TextDecoration.Underline,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.clickable { onLinkClicked() }
+                )
+            }
+        }
+        Spacer(modifier = Modifier.width(8.dp))
+        if (dismissible) {
+            Icon(
+                painter = painterResource(id = R.drawable.kds_icons_close),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(iconSize)
+                    .clickable { onDismissClicked() }
+            )
+        }
+    }
+}
+
+@Preview(
+    name = "KdsInlineMessage Preview Styles - Dark",
+    showBackground = true,
+    backgroundColor = DARK_MODE_PREVIEW_BACKGROUND,
+    uiMode = Configuration.UI_MODE_NIGHT_YES,
+)
+@Preview(
+    name = "KdsInlineMessage Preview Styles - Light",
+    showBackground = true,
+    backgroundColor = LIGHT_MODE_PREVIEW_BACKGROUND,
+)
+@Composable
+private fun KdsInlineMessagePreview() {
+    KdsTheme {
+        Column(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            ValidationMessageState.values().forEach {
+                KdsInlineMessage(
+                    label = "This is a ${it.name} message",
+                    style = it
+                )
+            }
+            KdsInlineMessage(
+                label = "This is a dismissible message",
+                dismissible = true
+            )
+            KdsInlineMessage(
+                label = "This is a linkable",
+                linkDisplay = "Link",
+                onLinkClicked = { println("link clicked!") }
+            )
+            KdsInlineMessage(
+                label = "This is a grouped top message",
+                position = KdsMessagePosition.TOP,
+            )
+            KdsInlineMessage(
+                label = "This is a grouped middle message",
+                position = KdsMessagePosition.BODY,
+            )
+            KdsInlineMessage(
+                label = "This is a grouped bottom message",
+                position = KdsMessagePosition.BOTTOM,
+            )
+        }
+    }
+}
+
