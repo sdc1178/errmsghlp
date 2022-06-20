@@ -1,0 +1,153 @@
+package com.kroger.pos.cart.ui
+
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement.spacedBy
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.Card
+import androidx.compose.material.Icon
+import androidx.compose.material.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import com.kroger.design.compose.LIGHT_MODE_PREVIEW_BACKGROUND
+import com.kroger.design.compose.extensions.textColorPrimary
+import com.kroger.design.compose.theme.KdsTheme
+import com.kroger.pos.cart.R
+import com.kroger.pos.cart.pub.model.CustomerLoyalty
+import com.kroger.pos.cart.pub.model.PointBucket
+import com.kroger.pos.commonviews.KdsButton
+
+@Composable
+fun CustomerLoyaltyInfo(
+    customerLoyalty: CustomerLoyalty? = null,
+    addCustomerLoyalty: () -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val alignment = if (customerLoyalty == null) Alignment.CenterVertically else Alignment.Top
+    Card(
+        modifier = Modifier
+            .padding(8.dp)
+            .clickable { expanded = !expanded },
+        elevation = 4.dp,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = alignment,
+            horizontalArrangement = spacedBy(16.dp)
+        ) {
+            Image(
+                painter = painterResource(R.drawable.kds_accent_icons_account),
+                contentDescription = stringResource(R.string.cd_account_icon),
+                modifier = Modifier.size(48.dp)
+            )
+            if (customerLoyalty != null) {
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    with(customerLoyalty) {
+                        Text(
+                            text = "$firstName $lastName",
+                            style = KdsTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = KdsTheme.colors.textColorPrimary
+                        )
+                        Text(
+                            text = stringResource(
+                                id = R.string.customer_number,
+                                loyaltyId.obscure(),
+                            ),
+                            style = KdsTheme.typography.bodySmall,
+                            color = KdsTheme.colors.textColorPrimary
+                        )
+                        if (expanded) {
+                            Row(
+                                modifier = Modifier.padding(top = 8.dp),
+                                horizontalArrangement = spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    modifier = Modifier.size(24.dp),
+                                    painter = painterResource(R.drawable.kds_icons_fuel_pump),
+                                    contentDescription = stringResource(id = R.string.cd_gas_icon),
+                                    tint = KdsTheme.colors.positiveLessProminent
+                                )
+                                Text(
+                                    stringResource(
+                                        R.string.fuel_points_display_template,
+                                        fuelPoints[0].month,
+                                        fuelPoints[0].points
+                                    ),
+                                    style = KdsTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = KdsTheme.colors.positiveLessProminent
+                                )
+                            }
+                        }
+                    }
+                }
+                Icon(
+                    painter = painterResource(
+                        if (expanded) R.drawable.kds_icons_chevron_up else R.drawable.kds_icons_chevron_down
+                    ),
+                    contentDescription = stringResource(if (expanded) R.string.cd_btn_collapse else R.string.cd_btn_expand),
+                    tint = KdsTheme.colors.textColorPrimary,
+                    modifier = Modifier.padding(top = 12.dp).size(24.dp)
+                )
+            } else {
+                KdsButton(
+                    text = stringResource(R.string.add_customer_loyalty),
+                    leadingIcon = painterResource(R.drawable.kds_icons_plus),
+                    onClick = addCustomerLoyalty,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+@Preview(
+    name = "Loyalty Card Preview - Light",
+    showBackground = true,
+    backgroundColor = LIGHT_MODE_PREVIEW_BACKGROUND,
+)
+@Composable
+fun Preview() {
+    KdsTheme {
+        Column {
+            CustomerLoyaltyInfo(
+                customerLoyalty = null,
+                addCustomerLoyalty = {}
+            )
+            CustomerLoyaltyInfo(
+                customerLoyalty = CustomerLoyalty(
+                    "123445678",
+                    "Bob",
+                    "Belcher",
+                    "8675309",
+                    listOf(PointBucket("January", 387))
+                ),
+                addCustomerLoyalty = {}
+            )
+        }
+    }
+}
+
+private fun String.obscure() =
+    if (length > 4) this.replaceRange(0..indices.last - 4, "****") else this
+
