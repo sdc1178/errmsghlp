@@ -1,0 +1,154 @@
+package com.kroger.pos.cart.ui
+
+import androidx.compose.foundation.layout.Arrangement.Absolute.spacedBy
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.AlertDialog
+import androidx.compose.material.Icon
+import androidx.compose.material.Scaffold
+import androidx.compose.material.Text
+import androidx.compose.material.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+import com.kroger.design.components.ValidationMessageState
+import com.kroger.design.compose.extensions.textColorPrimary
+import com.kroger.design.compose.theme.KdsTheme
+import com.kroger.pos.cart.R
+import com.kroger.pos.cart.pub.nav.OrderNavRoute
+import com.kroger.pos.cart.viewmodel.OrderViewModel
+import com.kroger.pos.commonviews.KdsInlineMessage
+import com.kroger.pos.search.pub.SearchViewProvider
+import retrofit2.Response.error
+
+@Composable
+fun HomeScreen(searchViewProvider: SearchViewProvider) {
+    val navController = rememberNavController()
+    val orderViewModelStoreOwner = checkNotNull(LocalViewModelStoreOwner.current)
+    val orderViewModel = hiltViewModel<OrderViewModel>(orderViewModelStoreOwner)
+
+    val scanError by orderViewModel.updateErrors.collectAsState()
+
+    val currentBackStackEntry by navController.currentBackStackEntryAsState()
+
+    Scaffold(
+        topBar = {
+            OrderToolbar(
+                searchViewProvider = searchViewProvider,
+                navController = navController,
+                currentRoute = OrderNavRoute.byId(currentBackStackEntry?.destination?.route),
+                goBack = { navController.popBackStack(OrderNavRoute.CART.id, false) },
+
+            )
+        },
+    ) {
+
+        if (scanError?.errorCode != null) {
+            KdsInlineMessage(
+                label = scanError?.errorMessage?.asString(LocalContext.current)
+                    ?.takeIf { it.isNotBlank() }
+                    ?: stringResource(id = R.string.generic_order_update_error),
+                style = ValidationMessageState.ERROR
+            )
+            AlertDialog(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                onDismissRequest = { orderViewModel.clearError() },
+                title = {
+                    KdsInlineMessage(
+                        label = scanError?.errorMessage?.asString(LocalContext.current)
+                            ?.takeIf { it.isNotBlank() }
+                            ?: stringResource(id = R.string.generic_order_update_error),
+                        style = ValidationMessageState.ERROR
+                    )
+//                    Row(
+//
+
+//                        modifier = Modifier.padding(bottom = 16.dp),
+//                        horizontalArrangement = spacedBy(16.dp),
+//                    )
+//                    {
+//                        Icon(
+//                            painter = painterResource(id = R.drawable.kds_icons_error),
+//                            contentDescription = null,
+//                            modifier = Modifier.size(24.dp),
+//                            tint = KdsTheme.colors.negativeLessProminent,
+//                        )
+//                        Text(
+//                            text = stringResource(id = R.string.error),
+//                            style = KdsTheme.typography.headerSmall,
+//                            fontWeight = FontWeight.Bold,
+//                            color = KdsTheme.colors.textColorPrimary,
+//                        )
+//                    }
+                },
+                text = {
+                    Text(
+                        text = scanError?.errorMessage?.asString(LocalContext.current)
+                            ?.takeIf { it.isNotBlank() }
+                            ?: stringResource(id = R.string.generic_order_update_error),
+                        style = KdsTheme.typography.bodyMedium,
+                        color = KdsTheme.colors.textColorPrimary,
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            orderViewModel.clearError()
+                        },
+                    ) {
+                        Text(
+                            text = stringResource(R.string.ok),
+                            color = KdsTheme.colors.accentMostProminent,
+                        )
+                    }
+                },
+            )
+        }
+
+        NavHost(navController = navController, startDestination = OrderNavRoute.CART.id) {
+            composable(OrderNavRoute.CART.id) {
+                OrderView(
+                    orderFlow = orderViewModel.order,
+                    stepperAction = orderViewModel::changeCartQuantity,
+                    expandedItemFlow = orderViewModel.expandedIndex,
+                    setExpandedItem = orderViewModel::setExpandedIndex,
+                    updateItemPrice = orderViewModel::updateItemPrice,
+                    itemUpdateState = orderViewModel.itemUpdateState,
+                    clearUpdateState = orderViewModel::clearItemUpdateState,
+                    navController = navController,
+                )
+            }
+            composable(OrderNavRoute.SEARCH.id) {
+                searchViewProvider.SearchResults(
+                    navController,
+                )
+            }
+            composable(OrderNavRoute.ALT_ID.id) {
+                AltIdScreen(
+                    addLoyalty = orderViewModel::addLoyalty,
+                    errorStream = orderViewModel.updateErrors,
+                    navController = navController,
+                )
+            }
+            composable(OrderNavRoute.SUMMARY.id) {
+                OrderSummaryScreen(
+                    navController,
+                )
+            }
+        }
+    }
+}
+
