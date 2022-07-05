@@ -1,0 +1,219 @@
+package com.kroger.pos.cart.ui
+
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Arrangement.Absolute.spacedBy
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.AlertDialog
+import androidx.compose.material.Button
+import androidx.compose.material.Card
+import androidx.compose.material.Icon
+import androidx.compose.material.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role.Companion.Image
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
+import com.kroger.design.components.ValidationMessageState
+import com.kroger.design.compose.LIGHT_MODE_PREVIEW_BACKGROUND
+import com.kroger.design.compose.theme.KdsTheme
+import com.kroger.design.util.styles.KdsButtonStyle
+import com.kroger.pos.cart.R
+import com.kroger.pos.cart.pub.repo.NetworkState
+import com.kroger.pos.commonviews.KdsButton
+import com.kroger.pos.commonviews.KdsInlineMessage
+import com.kroger.pos.commonviews.KdsInputHeader
+import com.kroger.pos.commonviews.KdsTextField
+import com.kroger.string_result.StringResult
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+
+@OptIn(ExperimentalComposeUiApi::class)
+@Composable
+fun AltIdScreen(
+    addLoyalty: (String) -> Unit,
+    dismissible: Boolean = true,
+    errorStream: StateFlow<NetworkState.Failure?>,
+    navController: NavController,
+) {
+    val focusRequester = remember { FocusRequester() }
+    var altId by remember { mutableStateOf("") }
+    val error by errorStream.collectAsState()
+    val iconSize = dimensionResource(id = com.kroger.design.R.dimen.kds_size_image_icon_utility_small)
+
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.TopCenter,
+    ) {
+        Card(
+            modifier = Modifier
+                .padding(horizontal = 32.dp, vertical = 48.dp)
+                .fillMaxWidth(),
+            elevation = 4.dp
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = spacedBy(8.dp)
+            ) {
+                Row(
+                    modifier = Modifier,
+                    horizontalArrangement = Arrangement.End,
+
+                ) {
+                    if (dismissible) {
+                        Icon(
+                            painter = painterResource(id = com.kroger.design.R.drawable.kds_icons_close),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(iconSize)
+                                .clickable {
+                                    navController.popBackStack()
+                                }
+                        )
+                    }
+                }
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = spacedBy(8.dp)
+                ) {
+                    Image(
+                        modifier = Modifier.size(72.dp),
+                        painter = painterResource(id = R.drawable.kds_accent_icons_account),
+                        contentDescription = stringResource(
+                            id = R.string.cd_account_icon
+                        )
+                    )
+                    KdsInputHeader(
+                        titleText = stringResource(id = R.string.alternate_id)
+                    )
+                    KdsTextField(
+                        value = TextFieldValue(altId, selection = TextRange(altId.length)),
+                        onValueChanged = {
+                            altId = formatPhoneNumber(it.text)
+                        },
+                        keyboardOptions = KeyboardOptions.Default.copy(
+                            imeAction = ImeAction.Go,
+                            keyboardType = KeyboardType.Phone
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onGo = {
+                                val trimmed = altId.replace("-", "")
+                                addLoyalty(trimmed)
+                                if (trimmed.length == 10) navController.popBackStack()
+                            }
+                        ),
+                        modifier = Modifier.focusRequester(focusRequester),
+                        error = error != null,
+                    )
+                    error?.let {
+                        KdsInlineMessage(
+                            label = it.errorMessage.asString(LocalContext.current),
+                            dismissible = false,
+                            style = ValidationMessageState.ERROR,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                        )
+                    }
+                }
+
+                Row(
+                    modifier = Modifier,
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    KdsButton(
+                        text = stringResource(R.string.cancel),
+                        buttonStyle = KdsButtonStyle.INVERSE_NEUTRAL_DOMINANT_FILL,
+                        onClick = {
+                            navController.popBackStack()
+                        }
+                    )
+                    KdsButton(
+                        text = stringResource(R.string.add_loyalty),
+                        buttonStyle = KdsButtonStyle.INVERSE_ACCENT_DOMINANT_FILL,
+                        onClick = { addLoyalty(altId) },
+                    )
+                }
+            }
+        }
+    }
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
+}
+
+private fun formatPhoneNumber(number: String): String {
+    val filtered = number
+        .filter { it.isDigit() }.run {
+            if (length > 9) slice(0..9) else this
+        }
+    return StringBuilder(filtered).apply {
+        if (length > 3) insert(3, "-")
+        if (length > 7) insert(7, "-")
+    }.toString()
+}
+
+@Preview(
+    name = "Loyalty Entry Screen - Light",
+    showBackground = true,
+    backgroundColor = LIGHT_MODE_PREVIEW_BACKGROUND,
+)
+@Composable
+fun AltIdEntryScreenPreview() {
+    KdsTheme {
+        AltIdScreen(
+            addLoyalty = {},
+            true,
+            MutableStateFlow(null),
+            rememberNavController()
+        )
+    }
+}
+
+@Preview(
+    name = "Loyalty Entry Screen - Error",
+    showBackground = true,
+    backgroundColor = LIGHT_MODE_PREVIEW_BACKGROUND,
+)
+@Composable
+fun AltIdEntryScreenErrorPreview() {
+    KdsTheme {
+        AltIdScreen(
+            addLoyalty = {},
+            true,
+            MutableStateFlow(NetworkState.Failure(StringResult.Literal("unauthorized"), 401, StringResult.Literal("unauthorized"))),
+            rememberNavController()
+        )
+    }
+}
